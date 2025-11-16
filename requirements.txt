@@ -1,0 +1,17 @@
+indicBert
+GPT4ALL
+GoogleTrans
+Transformers
+NLTK (Natural Language Toolkit)
+spaCy
+Hugging Face Transformers
+PyTorch
+TensorFlow
+Keras
+scikit-learn
+NumPy
+Pandas
+Gensim
+IndicNLP Library
+Stanza
+
