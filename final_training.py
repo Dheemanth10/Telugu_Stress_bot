@@ -1,11 +1,3 @@
-# train_indicbert_final.py
-# Usage:
-#   source venv/bin/activate
-#   python train_indicbert_final.py
-#
-# Requirements:
-#   pip install torch transformers sklearn pandas tqdm
-
 import os
 import json
 import random
@@ -20,11 +12,10 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, get_
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-# ================= CONFIG ===================
 
 DATA_JSONL = "final_dataset_complete.jsonl"
-MODEL_NAME = "./indicbert_telugu_emotion"      # pretrained indicbert folder
-SAVE_DIR = "indicbert_final"                   # where fine-tuned model will be saved
+MODEL_NAME = "./indicbert_telugu_emotion"   
+SAVE_DIR = "indicbert_final"                 
 NUM_LABELS = 4
 BATCH_SIZE = 8
 EPOCHS = 3
@@ -33,14 +24,14 @@ MAX_LEN = 128
 SEED = 42
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# =============================================
+
 
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 
-# ------------- Dataset class -------------
+
 class TextDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_len=128):
         self.texts = texts
@@ -65,7 +56,6 @@ class TextDataset(Dataset):
         return item
 
 
-# ------------- Load Dataset -------------
 if not Path(DATA_JSONL).exists():
     raise FileNotFoundError(f"{DATA_JSONL} not found in current folder!")
 
@@ -79,7 +69,7 @@ df = pd.DataFrame(rows)
 if 'text' not in df.columns or 'emotion' not in df.columns:
     raise ValueError("Dataset must contain 'text' and 'emotion' fields.")
 
-# Label encoding
+
 le = LabelEncoder()
 df['label_id'] = le.fit_transform(df['emotion'].astype(str))
 
@@ -94,20 +84,20 @@ train_texts, val_texts, train_labels, val_labels = train_test_split(
     stratify=df['label_id'].tolist()
 )
 
-# ------------- Tokenizer + Model -------------
+
 print("Loading tokenizer and model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=NUM_LABELS)
 model.to(DEVICE)
 
-# ------------- DataLoaders -------------
+
 train_dataset = TextDataset(train_texts, train_labels, tokenizer, max_len=MAX_LEN)
 val_dataset = TextDataset(val_texts, val_labels, tokenizer, max_len=MAX_LEN)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# ------------- Optimizer + Scheduler -------------
+
 optimizer = AdamW(model.parameters(), lr=LR)
 total_steps = len(train_loader) * EPOCHS
 warmup_steps = max(1, int(0.1 * total_steps))
@@ -115,7 +105,6 @@ scheduler = get_linear_schedule_with_warmup(
     optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
 )
 
-# ------------- Training Loop -------------
 best_val_acc = 0.0
 
 for epoch in range(1, EPOCHS + 1):
@@ -146,7 +135,7 @@ for epoch in range(1, EPOCHS + 1):
     avg_train_loss = total_loss / len(train_loader)
     print(f"Epoch {epoch} Training Loss: {avg_train_loss:.4f}")
 
-    # Validation
+
     model.eval()
     correct, total = 0, 0
 
@@ -165,7 +154,7 @@ for epoch in range(1, EPOCHS + 1):
     val_acc = correct / total
     print(f"Validation Accuracy after Epoch {epoch}: {val_acc:.4f}")
 
-    # Save best model
+
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         os.makedirs(SAVE_DIR, exist_ok=True)
@@ -177,7 +166,7 @@ print("Training complete. Best val acc:", best_val_acc)
 print("Model saved at:", SAVE_DIR)
 print("Label encoder classes:", list(le.classes_))
 
-# ---- FIX: Convert numpy int64 → python int ----
+
 label_map_clean = {k: int(v) for k, v in label_map.items()}
 
 label_info = {
@@ -185,7 +174,7 @@ label_info = {
     "class_to_id": label_map_clean
 }
 
-# Save in ONE file only
+
 save_path = os.path.join(SAVE_DIR, "label_encoder.json")
 
 with open(save_path, "w", encoding="utf-8") as f:
